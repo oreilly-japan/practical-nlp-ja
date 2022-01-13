@@ -1,0 +1,119 @@
+title: "UD Japanese GSDを用いた固有表現認識"
+description: "spaCy v3用の最小限の固有表現認識デモプロジェクト。"
+
+# Variables can be referenced across the project.yml using ${vars.var_name}
+vars:
+  name: "ner_demo"
+  lang: "ja"
+  train: "ja_gsd-ud-train.ne"
+  dev: "ja_gsd-ud-dev.ne"
+  test: "ja_gsd-ud-test.ne"
+  version: "0.0.1"
+  # Set your GPU ID, -1 is CPU
+  gpu_id: -1
+  # Vectors model for train-with-vectors
+  vectors_model: "ja_core_news_md"
+
+# These are the directories that the project needs. The project CLI will make
+# sure that they always exist.
+directories: ["assets", "corpus", "configs", "training", "scripts"]
+
+# Assets that should be downloaded or available in the directory. We're shipping
+# them with the project, so they won't have to be downloaded.
+assets:
+  - dest: "assets/"
+    git:
+      repo: "https://github.com/megagonlabs/UD_Japanese-GSD"
+      branch: "master"
+      path: ""
+    description: "The training/dev/test data."
+
+# Workflows are sequences of commands (see below) executed in order. You can
+# run them via "spacy project run [workflow]". If a commands's inputs/outputs
+# haven't changed, it won't be re-run.
+workflows:
+  all:
+    - download
+    - convert
+    - create-config
+    - train
+    - evaluate
+    - visualize-model
+
+# Project commands, specified in a style similar to CI config files (e.g. Azure
+# pipelines). The name is the command name that lets you trigger the command
+# via "spacy project run [command] [path]". The help message is optional and
+# shown when executing "spacy project run [optional command] [path] --help".
+commands:
+  - name: "download"
+    help: "spacyのモデルをダウンロード"
+    script:
+      - "python -m spacy download ${vars.vectors_model}"
+
+  - name: "convert"
+    help: "データセットをspaCyのバイナリ形式へ変換"
+    script:
+      - "python -m spacy convert assets/${vars.train}.conllu corpus
+                --converter conllu
+                --n-sents 10"
+      - "python -m spacy convert assets/${vars.dev}.conllu corpus
+                --converter conllu
+                --n-sents 10"
+      - "python -m spacy convert assets/${vars.test}.conllu corpus
+                --converter conllu
+                --n-sents 10"
+    deps:
+      - "assets/${vars.train}.conllu"
+      - "assets/${vars.dev}.conllu"
+      - "assets/${vars.test}.conllu"
+    outputs:
+      - "corpus/${vars.train}.spacy"
+      - "corpus/${vars.dev}.spacy"
+      - "corpus/${vars.test}.spacy"
+
+  - name: "create-config"
+    help: "固有表現認識のコンポーネント学習用の設定ファイルを作成"
+    script:
+      - "python -m spacy init config
+                --lang ${vars.lang}
+                --pipeline ner configs/config.cfg
+                --force"
+    outputs:
+      - "configs/config.cfg"
+
+  - name: "train"
+    help: "モデルの学習"
+    script:
+      - "python -m spacy train configs/config.cfg
+                --output training/
+                --paths.train corpus/${vars.train}.spacy
+                --paths.dev corpus/${vars.dev}.spacy
+                --training.eval_frequency 10
+                --gpu-id ${vars.gpu_id}
+                --initialize.vectors ${vars.vectors_model}
+                --components.tok2vec.model.embed.include_static_vectors true"
+    deps:
+      - "configs/config.cfg"
+      - "corpus/${vars.train}.spacy"
+      - "corpus/${vars.dev}.spacy"
+    outputs:
+      - "training/model-best"
+
+  - name: "evaluate"
+    help: "モデルを評価し、指標を書き出す"
+    script:
+      - "python -m spacy evaluate training/model-best corpus/${vars.test}.spacy
+                --output training/metrics.json"
+    deps:
+      - corpus/${vars.test}.spacy
+      - "training/model-best"
+    outputs:
+      - "training/metrics.json"
+
+  - name: visualize-model
+    help: "Streamlitを用いてモデルの出力をインタラクティブに可視化する"
+    script:
+      - "streamlit run scripts/visualize_model.py training/model-best \"岸田総理を東京駅で見かけた。\""
+    deps:
+      - "scripts/visualize_model.py"
+      - "training/model-best"
