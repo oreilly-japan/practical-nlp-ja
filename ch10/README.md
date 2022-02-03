@@ -9,3 +9,5 @@
 - 【[Google Colabで開く](https://colab.research.google.com/drive/1CiXNQjsqLnmyq0Q_MlPEP8qrUQoqAB7Y?usp=sharing)】[FinBERTを用いたセンチメント分析](./02_FinBERT.ipynb)
 
 - 【[Google Colabで開く](https://colab.research.google.com/drive/1sCrXeJPMEA_Mxq--YotImpfbBNjXZXz0?usp=sharing)】[LexNLPを用いた法律テキストからの情報抽出](./03_LexNLP.ipynb)
+
+- 【[Google Colabで開く](https://colab.research.google.com/drive/1bru-TUFtQ7IHCQnbO3SbOlECKMqoMCm0?usp=sharing)】[生体医療分野の固有表現認識におけるBERTとPubMedBERTの性能を比較する](./spaCy_bert_vs_pubmedbert.ipynb)
